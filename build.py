@@ -50,6 +50,7 @@ def page(path, title, desc, body, script):
 <header><a href="/">{SITE_NAME}</a><nav>{nav}</nav></header><main>{body}</main>
 <footer><p>計算はこのページの中だけで行い、入力した数字はどこにも送信・保存しません。</p>
 <p>税込の売価は外食の消費税10%で税抜に直しています。軽減税率（持ち帰り8%）は対象外です。</p>
+<p>シフト作りがつらい方へ：飲食店向けのシフト表（Googleスプレッドシート＋希望休フォーム、500円）→ <a href="https://note.com/chubo_sansu/n/nbd8e9eaa4b87">note</a> ／ <a href="https://chubo-sansu.booth.pm/items/8991992">BOOTH</a></p>
 <p><a href="/about.html">このサイトについて</a></p></footer>{JS_COMMON}<script>{script}</script></body></html>"""
 
 
@@ -64,6 +65,9 @@ NAV = [
     ("/budomari.html", "歩留まり"),
     ("/menu.html", "メニュー全体"),
     ("/fl.html", "FL比率"),
+    ("/neage.html", "値上げ"),
+    ("/jinkenhi.html", "1日の人件費"),
+    ("/kounetsuhi.html", "光熱費"),
     ("/saji.html", "大さじ・小さじ"),
 ]
 
@@ -95,6 +99,7 @@ INDEX = f"""
 <li>税抜の売価 ＝ 税込の売価 ÷ 1.1</li>
 </ul>
 <p><a href="/budomari.html">皮や骨を除いた分まで入れて1人前の原価を出す → 歩留まりの計算</a></p>
+<p><a href="/neage.html">値上げしたら、客数が何%減るまで粗利が減らないか → 値上げの分かれ目</a></p>
 """
 INDEX_JS = """bind(()=>{
 const e=exTax(n('p1'),$('tax').value),c=n('c1');
@@ -250,6 +255,110 @@ const per=$('bu').value==='ml'?n('bp')/(n('bq')*k/5):n('bp')/n('bq');
 $('co').textContent=isFinite(per)?(Math.round(per*o*10)/10)+'円':'—';$('ck').textContent=isFinite(per)?(Math.round(per*k*10)/10)+'円':'—';
 });"""
 
+# ---------- 6. 値上げの分かれ目 ----------
+NEAGE = f"""
+<h1>値上げしたら客数は何%減っても大丈夫？粗利の分かれ目の計算</h1>
+<p class="muted">値上げすると1品あたりの粗利は増えますが、出数が減れば粗利の合計は減ります。粗利の合計が値上げ前と同じになる「客数の減り」を出します。</p>
+<div class="tool">
+{TAX}
+{field("p0", "今の売価", "1100", "円")}
+{field("p1", "値上げ後の売価", "1210", "円")}
+{field("c", "1人前の原価", "300", "円")}
+{field("q", "今の出数（1か月）", "300", "食")}
+<div class="out"><div>値上げ率<b id="up">—</b></div><div>粗利が同じになる客数の減り<b id="be">—</b></div><div>減ってもいい出数<b id="bq">—</b></div><div>原価率（前→後）<b id="cr">—</b></div></div>
+</div>
+<p class="muted">実際に客数がどれだけ減るかは、品によって変わります。計算で出るのは「ここまで減っても粗利の合計は変わらない」という分かれ目だけです。</p>
+
+<h2>仕入れが上がったときの売価</h2>
+<div class="tool">
+{field("o0", "今の原価", "300", "円")}
+{field("o1", "上がった後の原価", "340", "円")}
+{field("s0", "今の売価（税抜）", "1000", "円")}
+<div class="out"><div>粗利の額を保つ売価（税抜）<b id="ka">—</b></div><div>原価率を保つ売価（税抜）<b id="kr">—</b></div><div>原価率を保つ売価（税込）<b id="ki">—</b></div></div>
+</div>
+
+<h2>計算式</h2>
+<ul>
+<li>粗利が同じになる客数の減り ＝ 1 −（値上げ前の粗利 ÷ 値上げ後の粗利）</li>
+<li>粗利 ＝ 税抜の売価 − 原価</li>
+<li>粗利の額を保つ売価 ＝ 今の売価 ＋ 原価の上がった分</li>
+<li>原価率を保つ売価 ＝ 上がった後の原価 ÷ 今の原価率</li>
+</ul>
+<p class="muted">例：原価300円・税抜1,000円の品を1割上げると、粗利は700円→800円。客数が12.5%減るまでは粗利の合計は値上げ前より減りません。</p>
+"""
+NEAGE_JS = """bind(()=>{
+const m=$('tax').value,a=exTax(n('p0'),m),b=exTax(n('p1'),m),c=n('c'),q=n('q');
+$('up').textContent=pc((b/a-1)*100);
+const r=1-(a-c)/(b-c);$('be').textContent=b>c&&a>c?pc(r*100):'—';
+$('bq').textContent=isFinite(r*q)&&b>c&&a>c?Math.floor(r*q)+'食まで':'—';
+$('cr').textContent=pc(c/a*100)+'→'+pc(c/b*100);
+const o0=n('o0'),o1=n('o1'),s0=n('s0');
+$('ka').textContent=yen(s0+o1-o0);$('kr').textContent=yen(o1/(o0/s0));$('ki').textContent=yen(o1/(o0/s0)*1.1);
+});"""
+
+# ---------- 7. 1日の人件費 ----------
+JINKENHI = f"""
+<h1>1日の人件費と人件費率の計算（シフトから）</h1>
+<p class="muted">その日のシフトの時給と時間から、1日の人件費と、売上に対する人件費率を出します。22時以降の深夜と、1日8時間を超えた分の割増も入れて計算します。</p>
+<div class="tool">
+<div class="ts"><table><thead><tr><th>名前・持ち場</th><th>時給</th><th>勤務時間</th><th>うち22時〜5時</th><th>日給</th></tr></thead><tbody id="rows"></tbody></table></div>
+<p><button id="add" type="button">行を足す</button></p>
+{TAX}
+{field("sales", "その日の売上（見込み）", "250000", "円")}
+<div class="out"><div>1日の人件費<b id="tl">—</b></div><div>人件費率<b id="lr">—</b></div><div>延べ時間<b id="th">—</b></div></div>
+</div>
+<h2>計算式</h2>
+<ul>
+<li>日給 ＝ 時給 ×（勤務時間 ＋ 深夜の時間 × 0.25 ＋ 8時間を超えた時間 × 0.25）</li>
+<li>人件費率 ＝ 1日の人件費 ÷ 税抜の売上 × 100</li>
+</ul>
+<p class="muted">勤務時間は休憩を除いた時間で入れてください。割増は労働基準法の最低の率（深夜22時〜翌5時は25%以上、1日8時間を超えた分は25%以上）で計算しています。店の決まりで率が高いときは、その分を足してください。
+社会保険料・交通費・賄いは入っていません。月の数字で見るときは <a href="/fl.html">FL比率の計算</a> へ。</p>
+"""
+JINKENHI_JS = """
+const ex=[['キッチン',1300,8,0],['ホール',1150,6,1],['洗い場',1100,5,0]];
+const num=e=>{const v=parseFloat(String(e.value).replace(/[,，円\\s]/g,''));return isFinite(v)?v:NaN};
+function row(v){const tr=document.createElement('tr');tr.innerHTML=`<td><input value="${v[0]}" style="text-align:left"></td><td><input inputmode="decimal" value="${v[1]}"></td><td><input inputmode="decimal" value="${v[2]}"></td><td><input inputmode="decimal" value="${v[3]}"></td><td class="r">—</td>`;
+$('rows').appendChild(tr);tr.querySelectorAll('input').forEach(e=>e.addEventListener('input',calc))}
+function calc(){let t=0,h=0;$('rows').querySelectorAll('tr').forEach(tr=>{const i=tr.querySelectorAll('input');
+const w=num(i[1]),hh=num(i[2]),nn=num(i[3])||0,pay=w*(hh+nn*0.25+Math.max(0,hh-8)*0.25);
+tr.querySelector('.r').textContent=yen(pay);if(isFinite(pay)){t+=pay;h+=hh}});
+const s=exTax(n('sales'),$('tax').value);
+$('tl').textContent=yen(t);$('lr').textContent=pc(t/s*100);$('th').textContent=Math.round(h*10)/10+'時間'}
+ex.forEach(row);$('add').onclick=()=>{row(['','','','']);calc()};
+$('sales').addEventListener('input',calc);$('tax').addEventListener('input',calc);calc();
+"""
+
+# ---------- 8. 光熱費 ----------
+KOUNETSUHI = f"""
+<h1>飲食店の光熱費率の計算（電気・ガス・水道・灯油）</h1>
+<p class="muted">1か月の請求額を入れると、売上に対する光熱費の割合と、1日あたり・お客さん1人あたりの光熱費を出します。</p>
+<div class="tool">
+{TAX}
+{field("s", "1か月の売上", "3000000", "円")}
+{field("e", "電気", "120000", "円")}
+{field("g", "ガス", "80000", "円")}
+{field("w", "水道", "40000", "円")}
+{field("tl", "灯油（使った量）", "0", "L")}
+{field("tp", "灯油の1Lあたりの値段", "140", "円")}
+{field("d", "営業日数", "26", "日")}
+{field("k", "1か月の客数", "3000", "人")}
+<div class="out"><div>光熱費の合計<b id="tot">—</b></div><div>光熱費率<b id="rate">—</b></div><div>1日あたり<b id="day">—</b></div><div>客1人あたり<b id="per">—</b></div></div>
+</div>
+<h2>計算式</h2>
+<ul>
+<li>光熱費 ＝ 電気 ＋ ガス ＋ 水道 ＋ 灯油の量 × 1Lの値段</li>
+<li>光熱費率 ＝ 光熱費 ÷ 税抜の売上 × 100</li>
+</ul>
+<p class="muted">請求書の金額は使った月と払う月がずれることがあります。比べるときは、毎回同じ「使った月」でそろえてください。
+灯油の都道府県別の値段と国の補助の額は <a href="https://toyu-kakaku.com/">灯油・ガソリンの値段</a> で毎週更新しています。</p>
+"""
+KOUNETSUHI_JS = """bind(()=>{
+const s=exTax(n('s'),$('tax').value),t=n('e')+n('g')+n('w')+(n('tl')||0)*(n('tp')||0);
+$('tot').textContent=yen(t);$('rate').textContent=pc(t/s*100);$('day').textContent=yen(t/n('d'));$('per').textContent=yen(t/n('k'));
+});"""
+
+
 ABOUT = """
 <h1>このサイトについて</h1>
 <p>飲食店の現場でよく使う計算を、スマホでもすぐできるようにまとめたページです。原価表を作るほどでもないときの確かめ算に使ってください。</p>
@@ -266,6 +375,9 @@ def main():
         ("/menu.html", "menu.html", "メニュー全体の原価率の計算（出数で平均）｜飲食店の原価計算", "品ごとの売価・原価・出数から、店全体の原価率を計算します。", MENU, MENU_JS),
         ("/fl.html", "fl.html", "FL比率・人件費率の計算｜飲食店の原価計算", "売上・食材とドリンクの原価・人件費から原価率・人件費率・FL比率を計算します。", FL, FL_JS),
         ("/saji.html", "saji.html", "大さじ・小さじは何グラム？調味料の早見表｜飲食店の原価計算", "しょうゆ・砂糖・塩・みりんなど調味料の大さじ・小さじ・1カップの重さの早見表と、杯数⇔グラムの換算、大さじ1杯の原価計算。", SAJI_HTML, SAJI_JS),
+        ("/neage.html", "neage.html", "値上げで客数は何%減っても大丈夫？粗利の分かれ目の計算｜飲食店の原価計算", "値上げ前後の売価と原価から、粗利の合計が変わらない客数の減り（損益の分かれ目）を計算します。仕入れが上がったときの売価も出せます。", NEAGE, NEAGE_JS),
+        ("/jinkenhi.html", "jinkenhi.html", "1日の人件費と人件費率の計算（深夜・残業の割増つき）｜飲食店の原価計算", "シフトの時給と勤務時間から、深夜・8時間超の割増を入れた1日の人件費と人件費率を計算します。", JINKENHI, JINKENHI_JS),
+        ("/kounetsuhi.html", "kounetsuhi.html", "飲食店の光熱費率の計算（電気・ガス・水道・灯油）｜飲食店の原価計算", "電気・ガス・水道・灯油の1か月の金額から、光熱費率と1日あたり・客1人あたりの光熱費を計算します。", KOUNETSUHI, KOUNETSUHI_JS),
         ("/about.html", "about.html", "このサイトについて｜飲食店の原価計算", "飲食店の原価計算サイトについて。", ABOUT, ""),
     ]
     for path, fn, title, desc, body, js in pages:
