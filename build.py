@@ -213,7 +213,7 @@ SAJI_SRC = "、".join(f"{a}＝{f}" for a, b, c, d, ca, sa, f in SAJI if f and a 
 SAJI_HTML = f"""
 <h1>大さじ・小さじは何グラム？調味料の早見表</h1>
 <p class="muted">大さじ1＝15ml、小さじ1＝5ml、1カップ＝200ml。すりきりで量ったときの重さと、大さじ1杯に入っている塩分・炭水化物の量です。</p>
-<p class="muted">大さじ・小さじは、忙しいと山盛りや目分量になりやすく、味がぶれる原因になります。決まったレシピはgに直しておくと、誰が作っても同じ味に近づきます。</p>
+<p class="muted">大さじ・小さじは、忙しいと山盛りや目分量になりやすく、味がぶれる原因になります。決まったレシピはgに直しておくと、誰が作っても同じ味に近づきます。gで量っても最後は味見で揃える話は<a href="https://note.com/chubo_sansu/n/n8eada739aa84">noteに書きました</a>。</p>
 
 <h2>早見表（単位 g）</h2>
 <div class="ts"><table><thead><tr><th>調味料</th><th>小さじ1</th><th>大さじ1</th><th>1カップ</th><th>塩分<br><small>大さじ1</small></th><th>炭水化物<br><small>大さじ1</small></th></tr></thead><tbody>{SAJI_ROWS}</tbody></table></div>
